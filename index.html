@@ -1,0 +1,1014 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>命運大轉盤</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;600;700;800&display=swap">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+<style>
+  /* Layout: wheel on the left, glass control panel on the right; stacked on phones. Dark slate first, light variant follows the viewer's theme. */
+  :root {
+    --bg: #0d1320;
+    --bg-glow-a: rgba(242, 184, 75, 0.10);
+    --bg-glow-b: rgba(108, 142, 245, 0.14);
+    --surface: rgba(255, 255, 255, 0.06);
+    --surface-strong: rgba(255, 255, 255, 0.11);
+    --field: rgba(8, 12, 22, 0.55);
+    --border: rgba(255, 255, 255, 0.13);
+    --fg: #e8edf6;
+    --muted: #8f9cb5;
+    --accent: #f2b84b;
+    --accent-2: #f08a5d;
+    --accent-ink: #1a1305;
+    --accent-text: #f2b84b;
+    --danger: #f0807a;
+    --shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.7);
+    --font-body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+    --font-mono: "DM Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #edf1f8;
+      --bg-glow-a: rgba(242, 184, 75, 0.22);
+      --bg-glow-b: rgba(108, 142, 245, 0.20);
+      --surface: rgba(255, 255, 255, 0.66);
+      --surface-strong: rgba(255, 255, 255, 0.9);
+      --field: rgba(255, 255, 255, 0.85);
+      --border: rgba(19, 27, 43, 0.12);
+      --fg: #131b2b;
+      --muted: #5b6880;
+      --accent-text: #9a6200;
+      --danger: #c24a42;
+      --shadow: 0 24px 60px -28px rgba(30, 45, 80, 0.35);
+      color-scheme: light;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #edf1f8;
+    --bg-glow-a: rgba(242, 184, 75, 0.22);
+    --bg-glow-b: rgba(108, 142, 245, 0.20);
+    --surface: rgba(255, 255, 255, 0.66);
+    --surface-strong: rgba(255, 255, 255, 0.9);
+    --field: rgba(255, 255, 255, 0.85);
+    --border: rgba(19, 27, 43, 0.12);
+    --fg: #131b2b;
+    --muted: #5b6880;
+    --accent-text: #9a6200;
+    --danger: #c24a42;
+    --shadow: 0 24px 60px -28px rgba(30, 45, 80, 0.35);
+    color-scheme: light;
+  }
+
+  html, body { min-height: 100%; }
+  body {
+    background:
+      radial-gradient(60rem 36rem at 12% -8%, var(--bg-glow-a), transparent 60%),
+      radial-gradient(52rem 34rem at 96% 8%, var(--bg-glow-b), transparent 62%),
+      var(--bg);
+    background-color: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page {
+    max-width: 1180px;
+    margin-inline: auto;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 20px 40px;
+  }
+  .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .muted { color: var(--muted); }
+  .label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .glass {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    backdrop-filter: blur(18px) saturate(140%);
+    box-shadow: var(--shadow);
+  }
+  .panel { border-radius: 22px; }
+
+  .field {
+    width: 100%;
+    background: var(--field);
+    color: var(--fg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.55rem 0.75rem;
+    min-width: 0;
+    font: inherit;
+  }
+  .field::placeholder { color: var(--muted); opacity: 0.8; }
+  .field:disabled, .btn:disabled, .chip:disabled { opacity: 0.45; cursor: not-allowed; }
+  textarea.field { resize: vertical; min-height: 110px; }
+  .field-row {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 0.3rem 0.45rem;
+  }
+  .field-row:hover:not(:disabled) { border-color: var(--border); }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem;
+    border-radius: 10px;
+    padding: 0.55rem 0.9rem;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    background: var(--surface-strong);
+    color: var(--fg);
+    cursor: pointer;
+    transition: transform 0.12s ease, background 0.15s ease, border-color 0.15s ease;
+    white-space: nowrap;
+  }
+  .btn:hover:not(:disabled) { border-color: var(--muted); }
+  .btn:active:not(:disabled) { transform: translateY(1px); }
+  .btn-primary {
+    background: linear-gradient(180deg, var(--accent), var(--accent-2));
+    color: var(--accent-ink);
+    border-color: transparent;
+  }
+  .btn-primary:hover:not(:disabled) { filter: brightness(1.06); border-color: transparent; }
+  .btn-danger { color: var(--danger); }
+  .icon-btn {
+    display: inline-grid; place-items: center;
+    width: 34px; height: 34px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    flex: none;
+  }
+  .icon-btn:hover:not(:disabled) { color: var(--danger); background: var(--surface-strong); }
+  .icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .top-btn { color: var(--fg); }
+  .top-btn:hover:not(:disabled) { color: var(--accent-text); background: var(--surface-strong); }
+
+  .chip {
+    border-radius: 999px;
+    padding: 0.32rem 0.8rem;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--fg);
+    cursor: pointer;
+  }
+  .chip:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-text); }
+
+  .seg {
+    display: grid; grid-template-columns: 1fr 1fr;
+    background: var(--field);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 3px;
+    gap: 3px;
+  }
+  .seg button {
+    border: 0; border-radius: 9px; padding: 0.45rem 0.6rem;
+    background: transparent; color: var(--muted);
+    font-weight: 600; cursor: pointer;
+  }
+  .seg button[aria-pressed="true"] { background: var(--surface-strong); color: var(--fg); box-shadow: 0 1px 0 var(--border) inset; }
+  .seg button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .switch {
+    position: relative; flex: none;
+    width: 44px; height: 26px; border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--field);
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  .switch::after {
+    content: ""; position: absolute; top: 2px; left: 2px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--muted);
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
+  .switch[aria-checked="true"] { background: color-mix(in srgb, var(--accent) 35%, transparent); border-color: var(--accent); }
+  .switch[aria-checked="true"]::after { transform: translateX(18px); background: var(--accent); }
+  .switch:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /* Wheel */
+  .wheel-box {
+    position: relative;
+    width: 100%;
+    max-width: 560px;
+    aspect-ratio: 1 / 1;
+    margin-inline: auto;
+    border-radius: 50%;
+    box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.75), 0 0 0 1px var(--border);
+  }
+  .wheel-box canvas { display: block; width: 100%; height: 100%; border-radius: 50%; }
+  .pointer {
+    position: absolute; left: 50%; top: -14px; z-index: 20;
+    width: 11%; max-width: 54px; min-width: 34px;
+    margin-left: calc(max(34px, min(11%, 54px)) / -2);
+    pointer-events: none;
+    transform-origin: 50% 28%;
+    filter: drop-shadow(0 6px 5px rgba(0, 0, 0, 0.45));
+  }
+  .pointer svg { display: block; width: 100%; height: auto; }
+  .go {
+    position: absolute; left: 50%; top: 50%; z-index: 10;
+    width: 21%; aspect-ratio: 1 / 1;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    border: 4px solid rgba(255, 255, 255, 0.85);
+    background: radial-gradient(circle at 35% 28%, #ffe29a, var(--accent) 45%, var(--accent-2));
+    color: var(--accent-ink);
+    font-family: var(--font-mono); font-weight: 500; font-size: clamp(16px, 4.2vw, 26px);
+    letter-spacing: 0.06em;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45), inset 0 -6px 12px rgba(160, 80, 20, 0.35);
+    cursor: pointer;
+    transition: transform 0.12s ease, filter 0.2s ease;
+  }
+  .go:hover:not(:disabled) { transform: translate(-50%, -50%) scale(1.04); }
+  .go:active:not(:disabled) { transform: translate(-50%, -50%) scale(0.97); }
+  .go:disabled { filter: grayscale(0.7) brightness(0.8); cursor: not-allowed; }
+  .start-btn {
+    width: 100%; max-width: 360px;
+    padding: 0.9rem 1.2rem;
+    font-size: 17px; letter-spacing: 0.12em;
+    border-radius: 14px;
+  }
+
+  /* Overlays */
+  .backdrop { background: rgba(5, 8, 15, 0.6); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+  .modal {
+    width: min(440px, 100%);
+    border-radius: 26px;
+    padding: 28px 24px 22px;
+    text-align: center;
+    background: var(--bg);
+    background-image: linear-gradient(180deg, var(--surface-strong), var(--surface));
+    border: 1px solid var(--border);
+    box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.8);
+    animation: pop 0.38s cubic-bezier(0.2, 1.2, 0.4, 1) both;
+  }
+  @keyframes pop { from { opacity: 0; transform: translateY(14px) scale(0.92); } to { opacity: 1; transform: none; } }
+  .drawer {
+    position: absolute; top: 0; right: 0; bottom: 0;
+    width: min(380px, 100%);
+    padding-top: calc(18px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+    padding-left: 18px;
+    padding-right: max(18px, env(safe-area-inset-right, 0px));
+    background: var(--bg);
+    border-left: 1px solid var(--border);
+    box-shadow: -30px 0 60px -30px rgba(0, 0, 0, 0.6);
+    display: flex; flex-direction: column; gap: 14px;
+    animation: slide 0.28s ease both;
+  }
+  @keyframes slide { from { transform: translateX(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .toast {
+    position: fixed; left: 50%; transform: translateX(-50%);
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    z-index: 70;
+    padding: 0.55rem 1rem; border-radius: 999px;
+    background: var(--surface-strong); border: 1px solid var(--border);
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    box-shadow: var(--shadow);
+    font-size: 14px; max-width: calc(100vw - 32px);
+  }
+  input[type="range"] { width: 100%; height: 18px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+  input[type="range"]:disabled { cursor: not-allowed; opacity: 0.5; }
+  .scroll-list > li + li { border-top: 1px solid var(--border); }
+  .scroll-list { overflow-y: auto; overscroll-behavior: contain; }
+  .scroll-list::-webkit-scrollbar { width: 8px; }
+  .scroll-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .modal, .drawer { animation: none; }
+    .btn, .go, .switch, .switch::after { transition: none; }
+  }
+</style>
+
+</head>
+<body>
+<div id="root">
+  <div style="min-height:60vh;display:grid;place-items:center;color:var(--muted)">載入轉盤中…</div>
+</div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useMemo, useCallback } = React;
+
+/**
+ * @typedef {{ id: string, label: string, weight: number | string }} Item
+ * @typedef {{ id: string, label: string, at: string }} HistoryEntry
+ * @typedef {{ n: number, cum: number[], total: number, colors: string[] }} Segments
+ */
+
+const STORAGE_KEY = "fate-wheel:v1";
+const TAU = Math.PI * 2;
+const MAX_ITEMS = 100;
+const PALETTE = ["#6c8ef5", "#8e7cf0", "#d77fb5", "#f0877a", "#f2a65a", "#e6c35c", "#7cc38d", "#4fb6b0"];
+const WHEEL_FONT = '"Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif';
+
+const TEMPLATES = [
+  { name: "今天吃什麼？", items: ["火鍋", "拉麵", "便當", "牛肉麵", "咖哩飯", "壽司", "披薩", "滷肉飯"] },
+  { name: "聚會懲罰", items: ["喝一杯", "大冒險", "真心話", "唱一首歌", "學動物叫", "伏地挺身 10 下", "請全場喝飲料", "模仿在場一個人"] },
+  { name: "數字 1-8", items: ["1", "2", "3", "4", "5", "6", "7", "8"] },
+];
+
+const uid = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36));
+const fmtPct = (x) => String(Math.round(x * 100) / 100);
+const equalSplit = (list) => list.map((it) => ({ ...it, pct: 100 / list.length }));
+/** Scale every share so the total is exactly 100%. */
+const normalize = (list) => {
+  if (!list.length) return list;
+  const s = list.reduce((a, b) => a + (Number(b.pct) || 0), 0);
+  if (s <= 0) return equalSplit(list);
+  return list.map((it) => ({ ...it, pct: ((Number(it.pct) || 0) / s) * 100 }));
+};
+const mkItems = (labels) => equalSplit(labels.map((label) => ({ id: uid(), label })));
+/** Give one item a new share; the others keep their ratios and fill the rest. */
+const setPct = (list, id, value) => {
+  const n = list.length;
+  if (n <= 1) return list.map((it) => ({ ...it, pct: 100 }));
+  const min = 0.1;
+  const p = Math.max(min, Math.min(100 - min * (n - 1), Number(value) || min));
+  const others = list.filter((it) => it.id !== id);
+  const sum = others.reduce((a, b) => a + b.pct, 0);
+  const rest = 100 - p;
+  return list.map((it) => (it.id === id ? { ...it, pct: p } : { ...it, pct: sum > 0 ? (it.pct / sum) * rest : rest / others.length }));
+};
+/** Add an item at an equal share (100 / n); existing items shrink in proportion. */
+const addWithShare = (list, item) => {
+  const share = 100 / (list.length + 1);
+  return [...list.map((it) => ({ ...it, pct: (it.pct * (100 - share)) / 100 })), { ...item, pct: share }];
+};
+const fmtTime = (iso) => {
+  const d = new Date(iso);
+  const p = (n) => String(n).padStart(2, "0");
+  return `${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+};
+
+function loadState() {
+  const fallback = { items: mkItems(TEMPLATES[0].items), eliminate: false, muted: false, history: [] };
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return fallback;
+    const s = JSON.parse(raw);
+    return {
+      items: Array.isArray(s.items)
+        ? normalize(s.items.filter((i) => i && typeof i.label === "string").map((i) => ({ id: i.id || uid(), label: i.label, pct: Number(i.pct) || (s.weighted ? Number(i.weight) || 1 : 1) })))
+        : fallback.items,
+      eliminate: !!s.eliminate,
+      muted: !!s.muted,
+      history: Array.isArray(s.history) ? s.history.slice(0, 100) : [],
+    };
+  } catch (e) {
+    return fallback;
+  }
+}
+
+/* ---------- Icons (Lucide paths, inlined so nothing external loads) ---------- */
+const Icon = ({ size = 18, children }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>
+);
+const IVolume = (p) => <Icon {...p}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" /><path d="M15.54 8.46a5 5 0 0 1 0 7.07" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14" /></Icon>;
+const IVolumeX = (p) => <Icon {...p}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" /><line x1="22" y1="9" x2="16" y2="15" /><line x1="16" y1="9" x2="22" y2="15" /></Icon>;
+const IPlus = (p) => <Icon {...p}><path d="M5 12h14" /><path d="M12 5v14" /></Icon>;
+const IMinus = (p) => <Icon {...p}><path d="M5 12h14" /></Icon>;
+const ITrash = (p) => <Icon {...p}><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /><line x1="10" x2="10" y1="11" y2="17" /><line x1="14" x2="14" y1="11" y2="17" /></Icon>;
+const IHistory = (p) => <Icon {...p}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l4 2" /></Icon>;
+const IX = (p) => <Icon {...p}><path d="M18 6 6 18" /><path d="m6 6 12 12" /></Icon>;
+const ISparkles = (p) => <Icon {...p}><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z" /></Icon>;
+const ITrophy = (p) => <Icon {...p}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" /><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" /><path d="M4 22h16" /><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" /><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" /><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" /></Icon>;
+const IClipboard = (p) => <Icon {...p}><rect width="8" height="4" x="8" y="2" rx="1" ry="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><path d="M12 11h4" /><path d="M12 16h4" /><path d="M8 11h.01" /><path d="M8 16h.01" /></Icon>;
+
+/* ---------- Color assignment: neighbours (including last/first) never match ---------- */
+function assignColors(n) {
+  const out = [];
+  for (let i = 0; i < n; i++) out.push(PALETTE[i % PALETTE.length]);
+  if (n > 1 && out[n - 1] === out[0]) out[n - 1] = PALETTE[(n - 1 + 4) % PALETTE.length];
+  return out;
+}
+
+/* ---------- Canvas wheel ---------- */
+function fitText(ctx, text, maxW) {
+  if (ctx.measureText(text).width <= maxW) return text;
+  let t = text;
+  while (t.length > 1 && ctx.measureText(t + "…").width > maxW) t = t.slice(0, -1);
+  return t + "…";
+}
+
+function drawWheel(canvas, size, items, segs, angle) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  const px = Math.round(size * dpr);
+  if (canvas.width !== px) { canvas.width = px; canvas.height = px; }
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, size, size);
+
+  const cx = size / 2, cy = size / 2;
+  const R = size / 2 - 1;
+  const rim = Math.max(13, size * 0.04);
+  const r = R - rim;
+
+  // rim
+  const rg = ctx.createLinearGradient(0, 0, size, size);
+  rg.addColorStop(0, "#46526d"); rg.addColorStop(0.5, "#1b2336"); rg.addColorStop(1, "#46526d");
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.fillStyle = rg; ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, cy, r + 1, 0, TAU); ctx.fillStyle = "#10172a"; ctx.fill();
+
+  const n = segs.n;
+  if (n === 0) {
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.fillStyle = "#1b2438"; ctx.fill();
+    ctx.fillStyle = "#8f9cb5";
+    ctx.font = `500 ${Math.max(14, size * 0.04)}px ${WHEEL_FONT}`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("請先新增選項", cx, cy + size * 0.16);
+    return;
+  }
+
+  const start = -Math.PI / 2 + angle;
+  const hubR = size * 0.115;
+
+  for (let i = 0; i < n; i++) {
+    const a0 = start + segs.cum[i] * TAU;
+    const a1 = start + segs.cum[i + 1] * TAU;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, a0, a1); ctx.closePath();
+    ctx.fillStyle = segs.colors[i]; ctx.fill();
+  }
+  // soft depth: darken toward the rim, lighten near the hub
+  const sg = ctx.createRadialGradient(cx, cy, hubR, cx, cy, r);
+  sg.addColorStop(0, "rgba(255,255,255,0.16)"); sg.addColorStop(0.55, "rgba(255,255,255,0)"); sg.addColorStop(1, "rgba(10,15,30,0.16)");
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.fillStyle = sg; ctx.fill();
+
+  // separators
+  if (n > 1) {
+    ctx.strokeStyle = "rgba(255,255,255,0.6)"; ctx.lineWidth = 1.5;
+    for (let i = 0; i < n; i++) {
+      const a = start + segs.cum[i] * TAU;
+      ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * hubR, cy + Math.sin(a) * hubR); ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); ctx.stroke();
+    }
+  }
+
+  // labels, rotated along the radius
+  for (let i = 0; i < n; i++) {
+    const a0 = start + segs.cum[i] * TAU;
+    const a1 = start + segs.cum[i + 1] * TAU;
+    const span = a1 - a0;
+    const chord = 2 * r * 0.7 * Math.sin(Math.min(span, Math.PI) / 2);
+    if (chord < 11) continue;
+    const fs = Math.max(11, Math.min(size * 0.052, chord * 0.55));
+    ctx.save();
+    ctx.translate(cx, cy); ctx.rotate((a0 + a1) / 2);
+    ctx.font = `600 ${fs}px ${WHEEL_FONT}`;
+    ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    ctx.fillStyle = "#0f1729";
+    const maxW = r - hubR - 26;
+    ctx.fillText(fitText(ctx, items[i].label, maxW), r - 16, 0);
+    ctx.restore();
+  }
+
+  // pegs on the rim
+  ctx.fillStyle = "#f3e7c4";
+  const pegR = Math.max(2.4, rim * 0.2);
+  for (let i = 0; i < n; i++) {
+    const a = start + segs.cum[i] * TAU;
+    ctx.beginPath(); ctx.arc(cx + Math.cos(a) * (R - rim / 2), cy + Math.sin(a) * (R - rim / 2), pegR, 0, TAU); ctx.fill();
+  }
+}
+
+/* ---------- Web Audio (synthesized, no assets) ---------- */
+function useAudio(mutedRef) {
+  const ctxRef = useRef(null);
+  const ensure = useCallback(() => {
+    try {
+      if (!ctxRef.current) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        ctxRef.current = new AC();
+      }
+      if (ctxRef.current.state === "suspended") ctxRef.current.resume();
+      return ctxRef.current;
+    } catch (e) { return null; }
+  }, []);
+
+  const tick = useCallback(() => {
+    const ctx = ctxRef.current;
+    if (!ctx || mutedRef.current) return;
+    const t = ctx.currentTime;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "triangle";
+    o.frequency.setValueAtTime(1900 + Math.random() * 180, t);
+    o.frequency.exponentialRampToValueAtTime(720, t + 0.03);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.15, t + 0.002);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.045);
+    o.connect(g).connect(ctx.destination);
+    o.start(t); o.stop(t + 0.06);
+    const o2 = ctx.createOscillator(), g2 = ctx.createGain();
+    o2.type = "sine";
+    o2.frequency.setValueAtTime(440, t);
+    o2.frequency.exponentialRampToValueAtTime(190, t + 0.035);
+    g2.gain.setValueAtTime(0.0001, t);
+    g2.gain.exponentialRampToValueAtTime(0.09, t + 0.003);
+    g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+    o2.connect(g2).connect(ctx.destination);
+    o2.start(t); o2.stop(t + 0.07);
+  }, []);
+
+  const win = useCallback(() => {
+    const ctx = ctxRef.current;
+    if (!ctx || mutedRef.current) return;
+    const t0 = ctx.currentTime + 0.05;
+    const note = (freq, at, dur, vol, type) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(freq, t0 + at);
+      g.gain.setValueAtTime(0.0001, t0 + at);
+      g.gain.exponentialRampToValueAtTime(vol, t0 + at + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + at + dur);
+      o.connect(g).connect(ctx.destination);
+      o.start(t0 + at); o.stop(t0 + at + dur + 0.05);
+    };
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+      note(f, i * 0.09, 0.4, 0.16, "triangle");
+      note(f * 2, i * 0.09, 0.25, 0.04, "sine");
+    });
+    [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f) => note(f, 0.42, 1.0, 0.09, "triangle"));
+  }, []);
+
+  return { ensure, tick, win };
+}
+
+/* ---------- Confetti ---------- */
+function useConfetti() {
+  const canvasRef = useRef(null);
+  const rafRef = useRef(0);
+  const fire = useCallback(() => {
+    const c = canvasRef.current;
+    if (!c) return;
+    cancelAnimationFrame(rafRef.current);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const W = window.innerWidth, H = window.innerHeight;
+    c.width = W * dpr; c.height = H * dpr;
+    const ctx = c.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const count = reduce ? 40 : 190;
+    const colors = [...PALETTE, "#ffffff", "#ffd66b"];
+    const parts = Array.from({ length: count }, (_, i) => {
+      const left = i % 2 === 0;
+      const ang = (left ? -1 : 1) * (Math.PI / 180) * (20 + Math.random() * 28) - Math.PI / 2;
+      const sp = 13 + Math.random() * 13;
+      return {
+        x: left ? W * 0.04 : W * 0.96, y: H * 0.95,
+        vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
+        w: 6 + Math.random() * 7, h: 4 + Math.random() * 6,
+        rot: Math.random() * TAU, vr: (Math.random() - 0.5) * 0.35,
+        wob: Math.random() * TAU, color: colors[(Math.random() * colors.length) | 0],
+        round: Math.random() < 0.25,
+      };
+    });
+    const t0 = performance.now();
+    const frame = (now) => {
+      ctx.clearRect(0, 0, W, H);
+      let alive = 0;
+      for (const p of parts) {
+        p.vy += 0.38; p.vx *= 0.992; p.vy *= 0.992;
+        p.x += p.vx; p.y += p.vy; p.rot += p.vr; p.wob += 0.12;
+        if (p.y < H + 30) alive++;
+        ctx.save();
+        ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.scale(1, Math.cos(p.wob));
+        ctx.fillStyle = p.color;
+        if (p.round) { ctx.beginPath(); ctx.arc(0, 0, p.w / 2.4, 0, TAU); ctx.fill(); }
+        else ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+      }
+      if (alive > 0 && now - t0 < 6000) rafRef.current = requestAnimationFrame(frame);
+      else ctx.clearRect(0, 0, W, H);
+    };
+    rafRef.current = requestAnimationFrame(frame);
+  }, []);
+  useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
+  return { canvasRef, fire };
+}
+
+/* ---------- Small UI parts ---------- */
+function Switch({ checked, onChange, disabled, label }) {
+  return <button type="button" role="switch" aria-checked={checked} aria-label={label} className="switch" disabled={disabled} onClick={() => onChange(!checked)} />;
+}
+
+function PctField({ value, onCommit, disabled, label }) {
+  const [draft, setDraft] = useState(null);
+  const commit = () => {
+    if (draft !== null) {
+      const v = parseFloat(draft);
+      if (!isNaN(v)) onCommit(v);
+      setDraft(null);
+    }
+  };
+  return (
+    <label className="flex items-center gap-1 flex-none">
+      <input type="text" inputMode="decimal" className="field mono" style={{ width: 70, padding: "0.35rem 0.45rem", textAlign: "right" }}
+        value={draft !== null ? draft : fmtPct(value)} disabled={disabled} aria-label={label}
+        onFocus={(e) => e.target.select()} onChange={(e) => setDraft(e.target.value.replace(/[^\d.]/g, ""))}
+        onBlur={commit} onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} />
+      <span className="mono muted">%</span>
+    </label>
+  );
+}
+
+function Pointer() {
+  return (
+    <svg viewBox="0 0 40 54" aria-hidden="true">
+      <defs>
+        <linearGradient id="ptr-g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#ffe9a8" /><stop offset="0.5" stopColor="#f2b84b" /><stop offset="1" stopColor="#d9782f" />
+        </linearGradient>
+      </defs>
+      <path d="M20 52 L5.6 22.5 A16 16 0 1 1 34.4 22.5 Z" fill="url(#ptr-g)" stroke="#fff6dc" strokeWidth="1.6" strokeLinejoin="round" />
+      <circle cx="20" cy="17" r="6" fill="#1a1305" opacity="0.85" />
+      <circle cx="18" cy="15" r="2" fill="#fff" opacity="0.7" />
+    </svg>
+  );
+}
+
+/* ---------- App ---------- */
+function App() {
+  const init = useMemo(loadState, []);
+  const [items, setItems] = useState(init.items);
+  const [eliminate, setEliminate] = useState(init.eliminate);
+  const [muted, setMuted] = useState(init.muted);
+  const [history, setHistory] = useState(init.history);
+  const [spinning, setSpinning] = useState(false);
+  const [winner, setWinner] = useState(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [newLabel, setNewLabel] = useState("");
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkText, setBulkText] = useState("");
+  const [size, setSize] = useState(480);
+  const [fontTick, setFontTick] = useState(0);
+  const [toast, setToast] = useState("");
+
+  const canvasRef = useRef(null);
+  const boxRef = useRef(null);
+  const pointerRef = useRef(null);
+  const angleRef = useRef(0);
+  const spinningRef = useRef(false);
+  const mutedRef = useRef(muted);
+  const spinRef = useRef(null);
+  const toastTimer = useRef(0);
+  const primaryRef = useRef(null);
+
+  const { ensure, tick, win } = useAudio(mutedRef);
+  const { canvasRef: confettiRef, fire } = useConfetti();
+
+  useEffect(() => { mutedRef.current = muted; }, [muted]);
+
+  // persistence
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ items, eliminate, muted, history })); } catch (e) {}
+  }, [items, eliminate, muted, history]);
+
+  const segs = useMemo(() => {
+    const ws = items.map((it) => Math.max(0.0001, Number(it.pct) || 0));
+    const total = ws.reduce((a, b) => a + b, 0);
+    const cum = [0];
+    let acc = 0;
+    ws.forEach((w) => { acc += w / total; cum.push(acc); });
+    if (cum.length > 1) cum[cum.length - 1] = 1;
+    return { n: items.length, cum, total, colors: assignColors(items.length) };
+  }, [items]);
+
+  const showToast = useCallback((msg) => {
+    setToast(msg);
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(""), 2200);
+  }, []);
+
+  // sizing
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const w = Math.round(entries[0].contentRect.width);
+      if (w > 0) setSize(w);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // make sure the CJK glyphs used on the wheel are loaded before drawing
+  useEffect(() => {
+    if (!document.fonts || !document.fonts.load) return;
+    const text = items.map((i) => i.label).join("") + "請先新增選項";
+    document.fonts.load('600 16px "Noto Sans TC"', text).then(() => setFontTick((t) => t + 1)).catch(() => {});
+  }, [items]);
+
+  useEffect(() => {
+    if (canvasRef.current) drawWheel(canvasRef.current, size, items, segs, angleRef.current);
+  }, [items, segs, size, fontTick]);
+
+  const segIndexAt = (cum, a) => {
+    const w = ((((-a) % TAU) + TAU) % TAU) / TAU;
+    for (let i = 0; i < cum.length - 1; i++) if (w >= cum[i] && w < cum[i + 1]) return i;
+    return 0;
+  };
+
+  const spin = () => {
+    if (spinningRef.current || items.length < 2) return;
+    ensure();
+    setHistoryOpen(false);
+    const list = items;
+    const { cum } = segs;
+    const u = Math.random();
+    let idx = 0;
+    for (let i = 0; i < cum.length - 1; i++) if (u >= cum[i] && u < cum[i + 1]) { idx = i; break; }
+    const theta = (cum[idx] + (0.12 + Math.random() * 0.76) * (cum[idx + 1] - cum[idx])) * TAU;
+
+    const cur = angleRef.current;
+    const turns = 6 + Math.floor(Math.random() * 5);
+    const delta = ((((-theta - cur) % TAU) + TAU) % TAU);
+    const target = cur + turns * TAU + delta;
+    const dur = 4500 + Math.random() * 1500;
+
+    spinningRef.current = true;
+    setSpinning(true);
+    setWinner(null);
+
+    const t0 = performance.now();
+    let lastIdx = segIndexAt(cum, cur);
+    let lastTick = 0, tilt = 0, finished = false;
+
+    const frame = (now) => {
+      const t = Math.min(1, (now - t0) / dur);
+      const e = 1 - Math.pow(1 - t, 4);
+      const a = cur + (target - cur) * e;
+      angleRef.current = a;
+      if (canvasRef.current) drawWheel(canvasRef.current, size, list, segs, a);
+
+      const i = segIndexAt(cum, a);
+      if (i !== lastIdx) {
+        lastIdx = i;
+        if (now - lastTick > 22) { tick(); lastTick = now; }
+        tilt = Math.min(24, tilt + 16);
+      }
+      tilt *= 0.86;
+      if (pointerRef.current) pointerRef.current.style.transform = `rotate(${-tilt}deg)`;
+
+      if (!finished && t >= 1) {
+        finished = true;
+        angleRef.current = ((a % TAU) + TAU) % TAU;
+        const item = list[idx];
+        const entry = { id: uid(), label: item.label, at: new Date().toISOString() };
+        spinningRef.current = false;
+        setSpinning(false);
+        setHistory((h) => [entry, ...h].slice(0, 100));
+        setWinner({ ...entry, removed: eliminate, remaining: list.length - (eliminate ? 1 : 0) });
+        if (eliminate) setItems((prev) => normalize(prev.filter((x) => x.id !== item.id)));
+        win();
+        fire();
+      }
+      if (!finished || tilt > 0.2) requestAnimationFrame(frame);
+      else if (pointerRef.current) pointerRef.current.style.transform = "none";
+    };
+    requestAnimationFrame(frame);
+  };
+  spinRef.current = spin;
+
+  // modal: Esc + focus
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") { setWinner(null); setHistoryOpen(false); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+  useEffect(() => { if (winner && primaryRef.current) primaryRef.current.focus(); }, [winner]);
+
+  /* list operations */
+  const addOne = (e) => {
+    e.preventDefault();
+    const label = newLabel.trim().slice(0, 40);
+    if (!label) return;
+    if (items.length >= MAX_ITEMS) { showToast(`最多 ${MAX_ITEMS} 個選項`); return; }
+    setItems((p) => addWithShare(p, { id: uid(), label }));
+    setNewLabel("");
+  };
+  const addBulk = (replace) => {
+    const labels = bulkText.split(/\r?\n/).map((l) => l.trim().slice(0, 40)).filter(Boolean);
+    if (!labels.length) { showToast("請先貼上內容，每行一個選項"); return; }
+    const base = replace ? [] : items;
+    const room = MAX_ITEMS - base.length;
+    const added = labels.slice(0, Math.max(0, room)).map((label) => ({ id: uid(), label }));
+    setItems(equalSplit([...base, ...added]));
+    setBulkText("");
+    showToast(`${replace ? "已取代為" : "已加入"} ${added.length} 個選項，機率已重新均分`);
+  };
+  const applyTemplate = (tpl) => { setItems(mkItems(tpl.items)); angleRef.current = 0; showToast(`已套用「${tpl.name}」`); };
+  const updateItem = (id, patch) => setItems((p) => p.map((it) => (it.id === id ? { ...it, ...patch } : it)));
+  const removeItem = (id) => setItems((p) => normalize(p.filter((it) => it.id !== id)));
+  const changePct = (id, v) => setItems((p) => setPct(p, id, v));
+  const equalizeAll = () => { setItems((p) => equalSplit(p)); showToast("已重新均分機率"); };
+  const changeCount = (d) => {
+    if (d > 0) {
+      if (items.length >= MAX_ITEMS) return;
+      setItems((p) => addWithShare(p, { id: uid(), label: `選項 ${p.length + 1}` }));
+    } else {
+      setItems((p) => normalize(p.slice(0, -1)));
+    }
+  };
+  const totalPct = items.reduce((a, b) => a + b.pct, 0);
+  const isEqual = items.length > 0 && items.every((it) => Math.abs(it.pct - 100 / items.length) < 0.005);
+
+  const canSpin = items.length >= 2 && !spinning;
+  const hint = items.length < 2 ? "至少需要 2 個選項才能抽籤" : `共 ${items.length} 項 · 機率總和 100%`;
+
+  return (
+    <div className="page">
+      {/* top bar */}
+      <header className="flex items-center justify-between gap-3 pb-5">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="grid place-items-center w-10 h-10 rounded-xl flex-none" style={{ background: "linear-gradient(160deg, var(--accent), var(--accent-2))", color: "var(--accent-ink)" }}>
+            <ISparkles size={20} />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-xl font-extrabold tracking-wide leading-tight">命運大轉盤</h1>
+            <p className="label" style={{ letterSpacing: "0.1em" }}>隨機抽籤工具</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1">
+          <button type="button" className="icon-btn top-btn" onClick={() => setHistoryOpen(true)} aria-label="開啟抽籤歷史紀錄" title="歷史紀錄">
+            <IHistory />
+          </button>
+          <button type="button" className="icon-btn top-btn" onClick={() => setMuted((m) => !m)} aria-pressed={muted} aria-label={muted ? "開啟音效" : "關閉音效"} title={muted ? "開啟音效" : "靜音"}>
+            {muted ? <IVolumeX /> : <IVolume />}
+          </button>
+        </div>
+      </header>
+
+      <main className="grid gap-6 lg:gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,430px)] items-start">
+        {/* wheel */}
+        <section className="flex flex-col items-center gap-5 pt-4 min-w-0" aria-label="轉盤">
+          <div ref={boxRef} className="wheel-box">
+            <canvas ref={canvasRef} role="img" aria-label={`轉盤，共 ${items.length} 個選項：${items.map((i) => i.label).join("、")}`} />
+            <div className="pointer" ref={pointerRef}><Pointer /></div>
+            <button type="button" className="go" onClick={spin} disabled={!canSpin} aria-label="開始抽籤">GO</button>
+          </div>
+          <button type="button" className="btn btn-primary start-btn" onClick={spin} disabled={!canSpin}>
+            {spinning ? "轉動中…" : "開始抽籤"}
+          </button>
+          <p className="mono text-sm muted" style={{ color: items.length < 2 ? "var(--danger)" : undefined }}>{hint}</p>
+        </section>
+
+        {/* control panel */}
+        <section className="glass panel p-5 flex flex-col gap-6 min-w-0" aria-label="名單與設定">
+          <div className="flex flex-col gap-3">
+            <div className="label">設定</div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <div className="font-semibold">淘汰模式</div>
+                <div className="text-sm muted">抽中後移除該選項，其餘機率按比例重新分配</div>
+              </div>
+              <Switch checked={eliminate} onChange={setEliminate} disabled={spinning} label="淘汰模式" />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <div className="label">快速模板</div>
+            <div className="flex flex-wrap gap-2">
+              {TEMPLATES.map((t) => (
+                <button key={t.name} type="button" className="chip" disabled={spinning} onClick={() => applyTemplate(t)}>{t.name}</button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 min-w-0">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="label">選項與機率</div>
+              <div className="flex items-center gap-1" role="group" aria-label="選項數量">
+                <button type="button" className="icon-btn top-btn" disabled={spinning || items.length === 0} onClick={() => changeCount(-1)} aria-label="減少一個選項"><IMinus size={16} /></button>
+                <span className="mono text-sm" style={{ minWidth: 56, textAlign: "center" }}>{items.length} 個</span>
+                <button type="button" className="icon-btn top-btn" disabled={spinning || items.length >= MAX_ITEMS} onClick={() => changeCount(1)} aria-label="增加一個選項"><IPlus size={16} /></button>
+              </div>
+            </div>
+
+            <form onSubmit={addOne} className="flex gap-2">
+              <input id="new-item" className="field" value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder="輸入選項後按 Enter" maxLength={40} disabled={spinning} aria-label="新增選項" />
+              <button type="submit" className="btn btn-primary" disabled={spinning || !newLabel.trim()}><IPlus size={16} />新增</button>
+            </form>
+
+            <div className="flex flex-col gap-2">
+              <div className="flex h-3 rounded-full overflow-hidden" style={{ background: "var(--field)" }} aria-hidden="true">
+                {items.map((it, i) => <div key={it.id} style={{ width: `${it.pct}%`, background: segs.colors[i], minWidth: 0 }} />)}
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="mono text-sm"><span className="muted">機率總和 </span>{fmtPct(totalPct)}%</span>
+                <div className="flex gap-2">
+                  <button type="button" className="btn" style={{ padding: "0.25rem 0.65rem", fontSize: 13 }} disabled={spinning || items.length < 2 || isEqual} onClick={equalizeAll}>均分重設</button>
+                  <button type="button" className="btn btn-danger" style={{ padding: "0.25rem 0.65rem", fontSize: 13 }} disabled={spinning || items.length === 0} onClick={() => { setItems([]); angleRef.current = 0; }}><ITrash size={14} />清空</button>
+                </div>
+              </div>
+            </div>
+
+            <ul className="scroll-list flex flex-col pr-1" style={{ maxHeight: 340 }}>
+              {items.length === 0 && <li className="muted text-sm py-4 text-center">目前沒有選項，新增一個或套用模板。</li>}
+              {items.map((it, i) => (
+                <li key={it.id} className="flex flex-col gap-1 py-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex-none w-3 h-3 rounded-full" style={{ background: segs.colors[i] }} aria-hidden="true" />
+                    <input className="field field-row flex-1" value={it.label} maxLength={40} disabled={spinning} aria-label={`選項 ${i + 1} 名稱`} onChange={(e) => updateItem(it.id, { label: e.target.value })} onBlur={(e) => { if (!e.target.value.trim()) removeItem(it.id); }} />
+                    <PctField value={it.pct} disabled={spinning} label={`${it.label || "選項"} 的機率`} onCommit={(v) => changePct(it.id, v)} />
+                    <button type="button" className="icon-btn" disabled={spinning} onClick={() => removeItem(it.id)} aria-label={`刪除 ${it.label}`}><ITrash size={16} /></button>
+                  </div>
+                  <input type="range" min="0.1" max="100" step="0.1" value={it.pct} disabled={spinning || items.length < 2} aria-label={`${it.label || "選項"} 機率滑桿`} onChange={(e) => changePct(it.id, parseFloat(e.target.value))} />
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <button type="button" className="btn" disabled={spinning} onClick={() => setBulkOpen((o) => !o)} aria-expanded={bulkOpen} style={{ justifyContent: "space-between" }}>
+              <span className="inline-flex items-center gap-2"><IClipboard size={16} />批量貼上</span>
+              <span className="muted text-sm">{bulkOpen ? "收合" : "每行一個選項"}</span>
+            </button>
+            {bulkOpen && (
+              <div className="flex flex-col gap-2">
+                <textarea id="bulk" className="field" value={bulkText} onChange={(e) => setBulkText(e.target.value)} placeholder={"貼上多行文字\n每一行會變成一個選項"} disabled={spinning} aria-label="批量貼上選項" />
+                <div className="flex gap-2">
+                  <button type="button" className="btn btn-primary flex-1" disabled={spinning} onClick={() => addBulk(false)}>加入名單</button>
+                  <button type="button" className="btn flex-1" disabled={spinning} onClick={() => addBulk(true)}>取代全部</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      </main>
+
+      {/* winner modal */}
+      {winner && (
+        <div className="fixed inset-0 z-50 grid place-items-center backdrop" style={{ padding: "max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px))" }} onClick={() => setWinner(null)}>
+          <div className="modal" role="dialog" aria-modal="true" aria-labelledby="win-title" onClick={(e) => e.stopPropagation()}>
+            <div className="mx-auto grid place-items-center w-14 h-14 rounded-full mb-3" style={{ background: "linear-gradient(160deg, var(--accent), var(--accent-2))", color: "var(--accent-ink)" }}><ITrophy size={26} /></div>
+            <div className="label">恭喜抽中</div>
+            <h2 id="win-title" className="text-3xl font-extrabold leading-snug py-3" style={{ wordBreak: "break-word" }}>{winner.label}</h2>
+            <p className="mono text-sm muted">{fmtTime(winner.at)}</p>
+            {winner.removed && <p className="text-sm muted mt-1">淘汰模式：已從名單移除，剩下 {winner.remaining} 個選項</p>}
+            <div className="flex gap-2 mt-6">
+              <button type="button" className="btn flex-1" onClick={() => setWinner(null)}>關閉</button>
+              <button ref={primaryRef} type="button" className="btn btn-primary flex-1" disabled={items.length < 2} onClick={() => { setWinner(null); setTimeout(() => spinRef.current && spinRef.current(), 60); }}>再抽一次</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* history drawer */}
+      {historyOpen && (
+        <div className="fixed inset-0 z-40">
+          <div className="absolute inset-0 backdrop" onClick={() => setHistoryOpen(false)} />
+          <aside className="drawer" role="dialog" aria-modal="true" aria-label="抽籤歷史紀錄">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold">歷史紀錄 <span className="mono muted text-sm">({history.length})</span></h2>
+              <button type="button" className="icon-btn top-btn" onClick={() => setHistoryOpen(false)} aria-label="關閉歷史紀錄"><IX /></button>
+            </div>
+            <ol className="scroll-list flex-1 flex flex-col gap-2 min-h-0">
+              {history.length === 0 && <li className="muted text-sm py-6 text-center">還沒有抽籤紀錄。</li>}
+              {history.map((h, i) => (
+                <li key={h.id} className="glass flex items-center justify-between gap-3 px-3 py-2.5" style={{ borderRadius: 12, boxShadow: "none" }}>
+                  <span className="font-semibold min-w-0" style={{ wordBreak: "break-word" }}>{h.label}</span>
+                  <span className="mono text-xs muted flex-none">{fmtTime(h.at)}</span>
+                </li>
+              ))}
+            </ol>
+            <button type="button" className="btn btn-danger" disabled={spinning || history.length === 0} onClick={() => setHistory([])}><ITrash size={16} />清除紀錄</button>
+          </aside>
+        </div>
+      )}
+
+      {toast && <div className="toast" role="status">{toast}</div>}
+      <canvas ref={confettiRef} className="fixed inset-0 pointer-events-none" style={{ zIndex: 60, width: "100%", height: "100%" }} aria-hidden="true" />
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
